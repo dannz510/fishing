@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fishing Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* General body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Deep charcoal background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            color: #e2e8f0; /* Light gray text */
+            flex-direction: column; /* Stack controls vertically */
+            overflow: hidden; /* Prevent body scroll from canvas */
+            /* Add perspective for overall 3D feel */
+            perspective: 1200px;
+            transform-style: preserve-3d;
+        }
+
+        /* Game wrapper for centering and shadow */
+        .game-wrapper {
+            background-color: #2d3748; /* Darker blue-gray for container */
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); /* Deeper, more spread shadow */
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #4a5568;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            /* Apply a subtle 3D rotation */
+            transform: rotateX(5deg) rotateY(-2deg) translateZ(0px);
+            transform-origin: center center;
+            transition: transform 0.3s ease-out;
+        }
+
+        /* Game title */
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            color: #81e6d9; /* Teal accent */
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            font-weight: 700;
+            text-shadow: 0px 5px 8px rgba(0, 0, 0, 0.7); /* More pronounced text shadow */
+        }
+
+        /* Canvas styling */
+        canvas {
+            background: linear-gradient(to top, #4a90e2 0%, #6ab7f0 50%, #87ceeb 100%); /* Water to sky gradient (default) */
+            display: block;
+            border-radius: 10px;
+            border: 2px solid #364958;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6); /* Stronger inset shadow */
+            cursor: crosshair; /* Indicate clickable area */
+        }
+
+        /* Info display (score & timer) */
+        .info-display {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            color: #f6ad55; /* Orange accent */
+            margin: 15px 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+
+        .info-display span {
+            background-color: #4a5568;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Game message/instructions */
+        .game-message {
+            font-size: 1.1em;
+            color: #a0aec0;
+            margin-top: 10px;
+            min-height: 1.5em;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Add message shadow */
+        }
+
+        /* Control buttons */
+        .control-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            background-color: #63b3ed; /* Blue */
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-transform: uppercase;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #4299e1;
+            transform: translateY(-3px) scale(1.02); /* Lift and slight scale on hover */
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4); /* Deeper shadow on hover */
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        button:disabled {
+            background-color: #8d99ae; /* Muted gray when disabled */
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+                perspective: none; /* Disable 3D perspective on small screens */
+            }
+            .game-wrapper {
+                padding: 15px;
+                margin: 10px;
+                border-radius: 15px;
+                transform: none; /* Disable 3D transform on small screens */
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            canvas {
+                width: 100%;
+                height: auto;
+            }
+            .info-display {
+                font-size: 1.2em;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .info-display span {
+                padding: 5px 10px;
+            }
+            .game-message {
+                font-size: 0.9em;
+            }
+            .control-buttons {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+            button {
+                font-size: 1em;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <h1>Fishing Game</h1>
+        <canvas id="gameCanvas" width="400" height="550"></canvas>
+        <div class="info-display">
+            <span>Score: <span id="scoreDisplay">0</span></span>
+            <span>Time: <span id="timerDisplay">60</span>s</span>
+        </div>
+        <div class="game-message" id="gameMessage">Click START to cast your line! Use Left/Right Arrows or A/D to move the boat.</div>
+        <div class="control-buttons">
+            <button id="startGameBtn">START GAME</button>
+            <button id="resetGameBtn" disabled>RESET</button>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state variables
+        let gameRunning = false;
+        let score = 0;
+        let timeLeft = 0;
+        let gameInterval; // For the game timer
+        let animationFrameId; // For the canvas animation loop
+        let waveOffset = 0; // For water animation
+        let cloudOffset = 0; // For cloud animation
+        let sunFlareOffset = 0; // For sun flare animation
+
+        // Game constants
+        const GAME_DURATION = 60; // seconds
+        const WATER_LEVEL = 150; // Y-coordinate where water starts
+        const HORIZON_Y = 120; // Y-coordinate for horizon line
+
+        // Boat properties
+        const boat = {
+            width: 80,
+            height: 40,
+            x: canvas.width / 2 - 80 / 2, // Initial x
+            y: WATER_LEVEL - 40 + 10,
+            speed: 3, // Horizontal movement speed
+            dx: 0 // Direction of movement (-1 for left, 1 for right, 0 for idle)
+        };
+        const ROD_OFFSET_X = 30; // Distance of rod from boat center
+        const ROD_OFFSET_Y = 50; // Height of rod from boat's y
+
+        const HOOK_RADIUS = 5;
+        const HOOK_SPEED = 4; // Speed of hook dropping/reeling
+        let hookY = boat.y + boat.height / 2; // Initial hook Y
+        let hookState = 'idle'; // 'idle', 'dropping', 'reeling', 'caught'
+        let caughtFish = null;
+
+        const FISH_SPAWN_INTERVAL = 1200; // milliseconds
+        const fishArray = [];
+        const splashParticles = []; // For splash effect
+
+        // Fish properties - more variety in colors and shapes
+        const fishTypes = [
+            { color: '#e74c3c', value: 10, minSize: 15, maxSize: 25, minSpeed: 0.5, maxSpeed: 1.5, shape: 'oval' }, // Red fish
+            { color: '#2ecc71', value: 20, minSize: 20, maxSize: 35, minSpeed: 1, maxSpeed: 2, shape: 'round' },   // Green fish
+            { color: '#3498db', value: 30, minSize: 25, maxSize: 40, minSpeed: 1.5, maxSpeed: 2.5, shape: 'long' } // Blue fish
+        ];
+
+        // UI elements
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const gameMessage = document.getElementById('gameMessage');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const resetGameBtn = document.getElementById('resetGameBtn');
+
+        /**
+         * Clears the canvas.
+         */
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        /**
+         * Draws the sky and water background with subtle animations.
+         */
+        function drawBackground() {
+            // Sky
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, WATER_LEVEL);
+            skyGradient.addColorStop(0, '#87ceeb'); // Light sky blue
+            skyGradient.addColorStop(0.7, '#6ab7f0'); // Slightly darker blue
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, WATER_LEVEL);
+
+            // Sun/Moon
+            ctx.fillStyle = '#fef08a'; // Yellow
+            ctx.beginPath();
+            ctx.arc(canvas.width - 70, 70, 40, 0, Math.PI * 2);
+            ctx.fill();
+            // Sun glare effect (more nuanced)
+            ctx.filter = 'blur(8px)';
+            const glareGradient = ctx.createRadialGradient(canvas.width - 70, 70, 0, canvas.width - 70, 70, 60);
+            glareGradient.addColorStop(0, 'rgba(255, 255, 200, 0.7)');
+            glareGradient.addColorStop(0.5 + Math.sin(sunFlareOffset) * 0.1, 'rgba(255, 255, 200, 0.3)');
+            glareGradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+            ctx.fillStyle = glareGradient;
+            ctx.beginPath();
+            ctx.arc(canvas.width - 70, 70, 60, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.filter = 'none'; // Reset filter
+            sunFlareOffset += 0.02; // Animate glare
+
+            // Clouds (more organic shapes)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.moveTo(50 + cloudOffset, 50);
+            ctx.bezierCurveTo(30 + cloudOffset, 30, 40 + cloudOffset, 20, 80 + cloudOffset, 30);
+            ctx.bezierCurveTo(120 + cloudOffset, 20, 130 + cloudOffset, 40, 100 + cloudOffset, 55);
+            ctx.bezierCurveTo(140 + cloudOffset, 70, 100 + cloudOffset, 80, 50 + cloudOffset, 70);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(canvas.width - 70 + cloudOffset * 0.7, 60);
+            ctx.bezierCurveTo(canvas.width - 90 + cloudOffset * 0.7, 40, canvas.width - 100 + cloudOffset * 0.7, 30, canvas.width - 140 + cloudOffset * 0.7, 40);
+            ctx.bezierCurveTo(canvas.width - 180 + cloudOffset * 0.7, 30, canvas.width - 190 + cloudOffset * 0.7, 50, canvas.width - 160 + cloudOffset * 0.7, 65);
+            ctx.bezierCurveTo(canvas.width - 120 + cloudOffset * 0.7, 80, canvas.width - 80 + cloudOffset * 0.7, 70, canvas.width - 70 + cloudOffset * 0.7, 60);
+            ctx.closePath();
+            ctx.fill();
+            cloudOffset = (cloudOffset + 0.1) % (canvas.width + 200); // Animate clouds
+
+            // Distant hills (more detailed and layered)
+            ctx.fillStyle = '#3a4b56'; // Darker blue-gray for closer hills
+            ctx.beginPath();
+            ctx.moveTo(0, HORIZON_Y);
+            ctx.quadraticCurveTo(canvas.width * 0.2, HORIZON_Y - 40, canvas.width * 0.4, HORIZON_Y - 20);
+            ctx.quadraticCurveTo(canvas.width * 0.6, HORIZON_Y - 60, canvas.width * 0.8, HORIZON_Y - 30);
+            ctx.quadraticCurveTo(canvas.width, HORIZON_Y - 50, canvas.width, HORIZON_Y);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#4f6d7a'; // Lighter blue-gray for further hills
+            ctx.beginPath();
+            ctx.moveTo(0, HORIZON_Y);
+            ctx.quadraticCurveTo(canvas.width * 0.3, HORIZON_Y - 70, canvas.width * 0.7, HORIZON_Y - 40);
+            ctx.quadraticCurveTo(canvas.width, HORIZON_Y - 80, canvas.width, HORIZON_Y);
+            ctx.closePath();
+            ctx.fill();
+
+            // Horizon line
+            ctx.strokeStyle = '#364958'; // Dark line
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, HORIZON_Y);
+            ctx.lineTo(canvas.width, HORIZON_Y);
+            ctx.stroke();
+
+            // Water
+            const waterGradient = ctx.createLinearGradient(0, WATER_LEVEL, 0, canvas.height);
+            waterGradient.addColorStop(0, '#4a90e2'); // Darker blue water
+            waterGradient.addColorStop(1, '#3a7bd5'); // Even darker
+            ctx.fillStyle = waterGradient;
+            ctx.fillRect(0, WATER_LEVEL, canvas.width, canvas.height - WATER_LEVEL);
+
+            // Water surface ripples (more complex and layered for depth)
+            for (let i = 0; i < 4; i++) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + i * 0.05})`; // Varying opacity
+                ctx.lineWidth = 1 + i * 0.5; // Varying thickness
+                ctx.beginPath();
+                ctx.moveTo(0, WATER_LEVEL + Math.sin(waveOffset * 0.8 + i * 0.5) * (5 - i));
+                for (let x = 0; x <= canvas.width; x += 30) {
+                    ctx.quadraticCurveTo(x + 15, WATER_LEVEL + Math.sin(x * 0.03 + waveOffset + i * 0.5) * (5 - i), x + 30, WATER_LEVEL + Math.sin((x+30) * 0.03 + waveOffset + i * 0.5) * (5 - i));
+                }
+                ctx.stroke();
+            }
+            waveOffset += 0.03; // Animate waves
+        }
+
+        /**
+         * Draws the fishing boat with more detail and shading for 3D effect.
+         */
+        function drawBoat() {
+            ctx.save();
+            ctx.translate(boat.x, boat.y); // Translate to boat's position
+
+            // Hull
+            ctx.beginPath();
+            ctx.moveTo(0, boat.height); // Bottom-left
+            ctx.lineTo(boat.width, boat.height); // Bottom-right
+            ctx.bezierCurveTo(boat.width + 15, boat.height - 10, boat.width + 25, boat.height - 30, boat.width + 10, boat.height - 40); // Bow curve
+            ctx.lineTo(-10, boat.height - 40); // Top left (stern)
+            ctx.bezierCurveTo(-25, boat.height - 30, -15, boat.height - 10, 0, boat.height); // Stern curve
+            ctx.closePath();
+
+            // Gradient for hull (simulating light from top-left)
+            const hullGradient = ctx.createLinearGradient(0, -boat.height * 0.5, 0, boat.height);
+            hullGradient.addColorStop(0, '#d4a129'); // Lighter goldenrod for top
+            hullGradient.addColorStop(0.5, '#b8860b'); // Main goldenrod
+            hullGradient.addColorStop(1, '#8b4513'); // Saddle Brown for bottom/shadow
+            ctx.fillStyle = hullGradient;
+            ctx.fill();
+            ctx.strokeStyle = '#5a2d0c'; // Darker brown for outlines
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Cabin
+            ctx.fillStyle = '#deb887'; // Burly Wood
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 2;
+            ctx.fillRect(boat.width * 0.2, -boat.height * 0.3, boat.width * 0.6, boat.height * 0.8);
+            ctx.strokeRect(boat.width * 0.2, -boat.height * 0.3, boat.width * 0.6, boat.height * 0.8);
+
+            // Cabin Roof (with slight perspective)
+            ctx.fillStyle = '#696969'; // Dim Gray
+            ctx.beginPath();
+            ctx.moveTo(boat.width * 0.2 - 5, -boat.height * 0.3);
+            ctx.lineTo(boat.width * 0.8 + 5, -boat.height * 0.3);
+            ctx.lineTo(boat.width * 0.8, -boat.height * 0.3 - 10);
+            ctx.lineTo(boat.width * 0.2, -boat.height * 0.3 - 10);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Window
+            ctx.fillStyle = '#87ceeb'; // Sky blue for window
+            ctx.fillRect(boat.width * 0.35, -boat.height * 0.15, boat.width * 0.3, boat.height * 0.4);
+
+            // Mast (more refined)
+            ctx.strokeStyle = '#a0aec0';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(boat.width / 2, -boat.height * 0.3);
+            ctx.lineTo(boat.width / 2, -boat.height * 0.3 - 40);
+            ctx.stroke();
+
+            // Flag
+            ctx.fillStyle = '#ef233c'; // Red flag
+            ctx.beginPath();
+            ctx.moveTo(boat.width / 2, -boat.height * 0.3 - 40);
+            ctx.lineTo(boat.width / 2 + 20, -boat.height * 0.3 - 40);
+            ctx.lineTo(boat.width / 2 + 20, -boat.height * 0.3 - 25);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        /**
+         * Draws the fishing rod and line.
+         */
+        function drawFishingRodAndLine() {
+            const currentRodBaseX = boat.x + boat.width / 2;
+            const currentRodBaseY = boat.y + boat.height / 2;
+
+            // Rod (with gradient for depth)
+            ctx.lineWidth = 4;
+            const rodGradient = ctx.createLinearGradient(currentRodBaseX, currentRodBaseY - 50, currentRodBaseX + 30, currentRodBaseY);
+            rodGradient.addColorStop(0, '#bfbfbf'); // Light gray
+            rodGradient.addColorStop(0.5, '#7f8c8d'); // Medium gray
+            rodGradient.addColorStop(1, '#555555'); // Dark gray
+            ctx.strokeStyle = rodGradient;
+            ctx.beginPath();
+            ctx.moveTo(currentRodBaseX, currentRodBaseY);
+            ctx.lineTo(currentRodBaseX + 30, currentRodBaseY - 50); // Angle of the rod
+            ctx.stroke();
+
+            // Reel (more detailed)
+            ctx.fillStyle = '#bdc3c7';
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(currentRodBaseX + 20, currentRodBaseY - 30, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath(); // Inner circle
+            ctx.arc(currentRodBaseX + 20, currentRodBaseY - 30, 5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Line
+            ctx.strokeStyle = '#bdc3c7'; // Lighter gray line
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(currentRodBaseX + 30, currentRodBaseY - 50); // End of rod
+            ctx.lineTo(currentRodBaseX + 30, hookY - HOOK_RADIUS); // Down to hook
+            ctx.stroke();
+        }
+
+        /**
+         * Draws the fishing hook.
+         */
+        function drawHook() {
+            const hookDrawX = boat.x + boat.width / 2 + ROD_OFFSET_X;
+
+            ctx.lineWidth = 2;
+            
+            // Apply a metallic gradient for a cooler look
+            const hookGradient = ctx.createLinearGradient(hookDrawX, hookY, hookDrawX + HOOK_RADIUS * 2, hookY + HOOK_RADIUS * 4);
+            hookGradient.addColorStop(0, '#e0e0e0'); // Highlight
+            hookGradient.addColorStop(0.2, '#cccccc');
+            hookGradient.addColorStop(0.5, '#999999');
+            hookGradient.addColorStop(0.8, '#777777');
+            hookGradient.addColorStop(1, '#555555'); // Shadow
+            ctx.strokeStyle = hookGradient;
+
+            // Main hook body
+            ctx.beginPath();
+            ctx.moveTo(hookDrawX, hookY);
+            ctx.lineTo(hookDrawX, hookY + HOOK_RADIUS * 2.5); // Slightly longer main body
+            ctx.stroke();
+
+            // Hook bend
+            ctx.beginPath();
+            ctx.arc(hookDrawX + HOOK_RADIUS, hookY + HOOK_RADIUS * 2.5, HOOK_RADIUS, Math.PI, Math.PI / 2, false);
+            ctx.stroke();
+
+            // Hook point/barb (more defined)
+            ctx.beginPath();
+            ctx.moveTo(hookDrawX + HOOK_RADIUS, hookY + HOOK_RADIUS * 3.5); // End of bend
+            ctx.lineTo(hookDrawX + HOOK_RADIUS * 1.5, hookY + HOOK_RADIUS * 2.8); // Barb tip
+            ctx.stroke();
+
+            // Add a small highlight dot for gleam
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(hookDrawX + HOOK_RADIUS * 0.2, hookY + HOOK_RADIUS * 0.5, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * Fish object constructor with different shapes.
+         */
+        function Fish(x, y, size, speed, color, value, shape, direction) {
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.speed = speed;
+            this.color = color;
+            this.value = value;
+            this.shape = shape;
+            this.direction = direction; // 1 for right, -1 for left
+        }
+
+        /**
+         * Draws a fish based on its shape.
+         */
+        Object.assign(Fish.prototype, {
+            draw: function() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                if (this.direction === -1) {
+                    ctx.scale(-1, 1); // Flip horizontally for left-facing
+                }
+
+                // Body gradient for 3D effect
+                const bodyGradient = ctx.createRadialGradient(
+                    0, 0, this.size * 0.2, // Inner circle
+                    0, 0, this.size * 1.5 // Outer circle
+                );
+                bodyGradient.addColorStop(0, this.color);
+                bodyGradient.addColorStop(1, 'rgba(0,0,0,0.4)'); // Shadow part
+                ctx.fillStyle = bodyGradient;
+
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)'; // Dark outline
+                ctx.lineWidth = 1;
+
+                ctx.beginPath();
+                let bodyWidth, bodyHeight;
+
+                if (this.shape === 'oval') {
+                    bodyWidth = this.size * 1.5;
+                    bodyHeight = this.size;
+                    ctx.ellipse(0, 0, bodyWidth, bodyHeight, 0, 0, Math.PI * 2);
+                } else if (this.shape === 'round') {
+                    bodyWidth = this.size * 1.2;
+                    bodyHeight = this.size * 1.2;
+                    ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                } else if (this.shape === 'long') {
+                    bodyWidth = this.size * 2;
+                    bodyHeight = this.size * 0.7;
+                    ctx.ellipse(0, 0, bodyWidth, bodyHeight, 0, 0, Math.PI * 2);
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                // Tail (with shading)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(-bodyWidth * 0.8, 0); // Base of tail
+                ctx.lineTo(-bodyWidth * 1.2, -bodyHeight * 0.7);
+                ctx.lineTo(-bodyWidth * 1.2, bodyHeight * 0.7);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Top Fin (with shading)
+                ctx.beginPath();
+                ctx.moveTo(-bodyWidth * 0.3, -bodyHeight * 0.9);
+                ctx.lineTo(bodyWidth * 0.2, -bodyHeight * 1.3);
+                ctx.lineTo(bodyWidth * 0.5, -bodyHeight * 0.9);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Eye (more realistic)
+                ctx.fillStyle = '#2d3748'; // Dark color for eye
+                ctx.beginPath();
+                ctx.arc(bodyWidth * 0.6, -bodyHeight * 0.4, bodyHeight * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.arc(bodyWidth * 0.6 + bodyHeight * 0.05, -bodyHeight * 0.4 - bodyHeight * 0.05, bodyHeight * 0.05, 0, Math.PI * 2); // Pupil highlight
+                ctx.stroke();
+
+                // Gills (subtle lines)
+                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(bodyWidth * 0.3, -bodyHeight * 0.2);
+                ctx.lineTo(bodyWidth * 0.3 + 5, bodyHeight * 0.2);
+                ctx.stroke();
+
+                ctx.restore();
+            },
+            update: function() {
+                this.x += this.speed * this.direction;
+
+                // Reverse direction if hitting canvas edges
+                if (this.direction === 1 && this.x - this.size * 2 >= canvas.width) {
+                    this.x = -this.size * 2; // Wrap around to left
+                } else if (this.direction === -1 && this.x + this.size * 2 <= 0) {
+                    this.x = canvas.width + this.size * 2; // Wrap around to right
+                }
+            }
+        });
+
+        /**
+         * Spawns a new fish.
+         */
+        function spawnFish() {
+            const type = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+            const size = Math.floor(Math.random() * (type.maxSize - type.minSize + 1)) + type.minSize;
+            const speed = Math.random() * (type.maxSpeed - type.minSpeed) + type.minSpeed;
+            const y = Math.random() * (canvas.height - WATER_LEVEL - size * 2) + WATER_LEVEL + size; // Ensure fish stays in water
+
+            const direction = Math.random() < 0.5 ? 1 : -1;
+            const x = direction === 1 ? -size * 3 : canvas.width + size * 3; // Start well off-screen
+            fishArray.push(new Fish(x, y, size, speed, type.color, type.value, type.shape, direction));
+        }
+
+        /**
+         * Particle constructor for splash effects.
+         * @param {number} x - Initial X.
+         * @param {number} y - Initial Y.
+         * @param {string} color - Particle color.
+         * @param {number} vx - Velocity X.
+         * @param {number} vy - Velocity Y.
+         * @param {number} size - Particle size.
+         */
+        function Particle(x, y, color, vx, vy, size) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.vx = vx;
+            this.vy = vy;
+            this.alpha = 1;
+            this.size = size || Math.random() * 3 + 1;
+            this.gravity = 0.1;
+        }
+
+        /**
+         * Draws a particle.
+         */
+        Particle.prototype.draw = function() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        };
+
+        /**
+         * Updates a particle's position and fades it.
+         */
+        Particle.prototype.update = function() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += this.gravity;
+            this.alpha -= 0.03; // Fade out
+        };
+
+        /**
+         * Creates a splash effect at given coordinates.
+         * @param {number} x - X coordinate for splash.
+         * @param {number} y - Y coordinate for splash.
+         * @param {string} type - 'catch' for bigger splash, 'cast' for smaller.
+         */
+        function createSplash(x, y, type = 'cast') {
+            let count = type === 'catch' ? 30 : 15;
+            let speedRange = type === 'catch' ? { min: 3, max: 8 } : { min: 1, max: 5 };
+            let sizeRange = type === 'catch' ? { min: 2, max: 5 } : { min: 1, max: 3 };
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * (speedRange.max - speedRange.min) + speedRange.min;
+                const vx = Math.cos(angle) * speed;
+                const vy = Math.sin(angle) * speed * 0.7; // Make vertical velocity slightly less for more horizontal spread
+                const size = Math.random() * (sizeRange.max - sizeRange.min) + sizeRange.min;
+                splashParticles.push(new Particle(x, y, '#e0f2f7', vx, vy, size)); // Light blue/white
+            }
+        }
+
+        /**
+         * Checks for collision between hook and fish.
+         * @param {Fish} fish - The fish object.
+         * @returns {boolean} - True if collision, false otherwise.
+         */
+        function checkCollision(fish) {
+            const hookTipX = boat.x + boat.width / 2 + ROD_OFFSET_X + HOOK_RADIUS * 0.5; // Approximate hook tip
+            const hookTipY = hookY + HOOK_RADIUS * 2 + HOOK_RADIUS; // Approximate hook tip
+
+            // Distance between hook tip and fish center
+            const dx = hookTipX - fish.x;
+            const dy = hookTipY - fish.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            return distance < fish.size * 0.8 + HOOK_RADIUS; // Collision if distance is less than combined radii/size
+        }
+
+        /**
+         * Updates the game state for each animation frame.
+         */
+        function updateGame() {
+            // Update frameCount for animations
+            frameCount++;
+
+            // Update boat position
+            boat.x += boat.dx * boat.speed;
+            // Keep boat within canvas bounds
+            if (boat.x < -boat.width / 4) boat.x = -boat.width / 4;
+            if (boat.x > canvas.width - boat.width * 0.75) boat.x = canvas.width - boat.width * 0.75;
+
+
+            clearCanvas();
+            drawBackground(); // Draws sky, clouds, animated water surface
+            drawBoat();
+            drawFishingRodAndLine();
+    
+            // Draw bubbles when hook is below water
+            if (hookY > WATER_LEVEL && hookState === 'dropping') {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(boat.x + boat.width / 2 + ROD_OFFSET_X + Math.sin(frameCount * 0.1) * 3, hookY + 10 + Math.cos(frameCount * 0.05) * 5, 2, 0, Math.PI * 2);
+                ctx.arc(boat.x + boat.width / 2 + ROD_OFFSET_X + 5 + Math.cos(frameCount * 0.08) * 4, hookY + 20 + Math.sin(frameCount * 0.06) * 6, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Update and draw fish
+            for (let i = fishArray.length - 1; i >= 0; i--) {
+                const fish = fishArray[i];
+                // Defensive check: ensure it's a valid Fish instance
+                if (!(fish instanceof Fish)) {
+                    console.error("Non-Fish object found in fishArray, removing:", fish);
+                    fishArray.splice(i, 1);
+                    continue;
+                }
+                
+                if (hookState === 'dropping' && checkCollision(fish) && caughtFish === null) {
+                    caughtFish = fish;
+                    hookState = 'reeling';
+                    fishArray.splice(i, 1); // Remove fish from array
+                    gameMessage.textContent = `Caught a ${caughtFish.value} point fish!`;
+                    messageColor('#2ecc71'); // Green message
+                    createSplash(boat.x + boat.width / 2 + ROD_OFFSET_X, hookY + HOOK_RADIUS * 2, 'catch'); // Splash at hook
+                }
+                fish.update();
+                fish.draw();
+
+                // Remove fish that are far off-screen
+                if ((fish.direction === 1 && fish.x > canvas.width + fish.size * 4) ||
+                    (fish.direction === -1 && fish.x < -fish.size * 4)) {
+                    fishArray.splice(i, 1);
+                }
+            }
+
+            // Update hook position based on state
+            if (hookState === 'dropping') {
+                hookY += HOOK_SPEED;
+                if (hookY >= canvas.height - HOOK_RADIUS * 2) { // Hit bottom (or just above canvas bottom)
+                    hookY = canvas.height - HOOK_RADIUS * 2;
+                    hookState = 'reeling';
+                    gameMessage.textContent = "Missed! Reeling in...";
+                    messageColor('#e74c3c'); // Red message
+                    createSplash(boat.x + boat.width / 2 + ROD_OFFSET_X, hookY, 'cast'); // Splash at bottom
+                }
+            } else if (hookState === 'reeling') {
+                hookY -= HOOK_SPEED;
+                if (caughtFish) {
+                    // Move caught fish with hook
+                    caughtFish.x = boat.x + boat.width / 2 + ROD_OFFSET_X; // Align X with hook
+                    caughtFish.y = hookY + HOOK_RADIUS; // Align Y with hook
+                    caughtFish.draw(); // Redraw caught fish at new position
+                }
+
+                if (hookY <= boat.y + boat.height / 2) { // Hook back to idle position (boat level)
+                    hookY = boat.y + boat.height / 2;
+                    hookState = 'idle';
+                    if (caughtFish) {
+                        score += caughtFish.value;
+                        scoreDisplay.textContent = score;
+                        caughtFish = null;
+                        gameMessage.textContent = "Fish delivered! Cast again!";
+                        messageColor('#3498db'); // Blue message
+                    } else {
+                        gameMessage.textContent = "Ready to cast!";
+                        messageColor('#a0aec0'); // Gray message
+                    }
+                }
+            }
+            drawHook(); // Draw hook after fish to ensure it's on top
+
+            // Update and draw splash particles
+            for (let i = splashParticles.length - 1; i >= 0; i--) {
+                const particle = splashParticles[i];
+                particle.update();
+                particle.draw();
+                if (particle.alpha <= 0 || particle.y > canvas.height) {
+                    splashParticles.splice(i, 1);
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(updateGame);
+        }
+
+        /**
+         * Starts the game.
+         */
+        function startGame() {
+            if (gameRunning) return;
+
+            gameRunning = true;
+            score = 0;
+            scoreDisplay.textContent = score;
+            timeLeft = GAME_DURATION;
+            timerDisplay.textContent = timeLeft;
+            gameMessage.textContent = "Cast your line by clicking the water! Use Left/Right Arrows or A/D to move the boat.";
+            messageColor('#a0aec0'); // Gray message
+
+            fishArray.length = 0; // Clear any existing fish
+            hookY = boat.y + boat.height / 2;
+            hookState = 'idle';
+            caughtFish = null;
+            splashParticles.length = 0; // Clear particles
+            frameCount = 0; // Reset frame count for animations
+            boat.x = canvas.width / 2 - boat.width / 2; // Reset boat position
+            boat.dx = 0; // Stop boat movement
+
+            startGameBtn.disabled = true;
+            resetGameBtn.disabled = false;
+
+            // Start timer
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            // Start animation loop
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            updateGame(); // Initial call to start the loop
+        }
+
+        /**
+         * Ends the game.
+         */
+        function endGame() {
+            if (!gameRunning && timeLeft > 0) return; // Prevent ending game if already ended or not started
+
+            gameRunning = false;
+            clearInterval(gameInterval); // Stop game timer
+            cancelAnimationFrame(animationFrameId); // Stop animation loop
+
+            gameMessage.textContent = `Game Over! Final Score: ${score}`;
+            messageColor('#ef233c'); // Red game over message
+
+            startGameBtn.disabled = false;
+            resetGameBtn.disabled = false;
+        }
+
+        /**
+         * Resets the game to its initial state.
+         */
+        function resetGame() {
+            endGame(); // Ensure all loops/intervals are cleared if game was running
+            score = 0;
+            scoreDisplay.textContent = 0;
+            timeLeft = GAME_DURATION;
+            timerDisplay.textContent = GAME_DURATION;
+            gameMessage.textContent = "Click START to cast your line! Use Left/Right Arrows or A/D to move the boat.";
+            messageColor('#a0aec0'); // Gray message
+            fishArray.length = 0; // Clear fish
+            hookY = boat.y + boat.height / 2; // Reset hook
+            hookState = 'idle';
+            caughtFish = null;
+            splashParticles.length = 0; // Clear particles
+            waveOffset = 0; // Reset wave animation
+            cloudOffset = 0; // Reset cloud animation
+            frameCount = 0; // Reset frame count
+            boat.x = canvas.width / 2 - boat.width / 2; // Reset boat position
+            boat.dx = 0; // Stop boat movement
+
+            clearCanvas();
+            drawBackground();
+            drawBoat();
+            drawFishingRodAndLine();
+            drawHook(); // Draw hook in idle position
+
+            startGameBtn.disabled = false;
+            resetGameBtn.disabled = true;
+        }
+
+        /**
+         * Handles casting the line on canvas click.
+         * @param {MouseEvent} event - The click event object.
+         */
+        function castLine(event) {
+            // Only cast if game is running and hook is idle (not dropping/reeling)
+            if (gameRunning && hookState === 'idle') {
+                // Determine click position relative to canvas
+                const rect = canvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+
+                // Ensure click is on the water area to cast
+                if (clickY > WATER_LEVEL) {
+                    hookY = boat.y + boat.height / 2; // Ensure hook starts from top
+                    hookState = 'dropping';
+                    gameMessage.textContent = "Line dropping...";
+                    messageColor('#63b3ed'); // Blue message
+                    createSplash(boat.x + boat.width / 2 + ROD_OFFSET_X, WATER_LEVEL, 'cast');
+                } else {
+                    gameMessage.textContent = "Click the water to cast!";
+                    messageColor('#f6ad55'); // Orange warning
+                }
+            } else if (!gameRunning) {
+                 gameMessage.textContent = "Press START GAME first!";
+                 messageColor('#f6ad55');
+            }
+        }
+
+        /**
+         * Changes message text and color.
+         * @param {string} color - The CSS color string.
+         */
+        function messageColor(color) {
+            gameMessage.style.color = color;
+        }
+
+        // Event listeners for boat movement
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a') {
+                boat.dx = -1;
+            } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                boat.dx = 1;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (!gameRunning) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ArrowRight' || e.key === 'd') {
+                boat.dx = 0;
+            }
+        });
+
+        // Event listeners for buttons and canvas click
+        startGameBtn.addEventListener('click', startGame);
+        resetGameBtn.addEventListener('click', resetGame);
+        canvas.addEventListener('click', castLine); // Canvas click for casting
+
+        // Periodically spawn fish during game
+        setInterval(() => {
+            if (gameRunning) {
+                spawnFish();
+            }
+        }, FISH_SPAWN_INTERVAL);
+
+        // Initial setup on window load
+        window.onload = resetGame; // Call reset to set up initial drawing
+    </script>
+</body>
+</html>
